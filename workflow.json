@@ -1,0 +1,549 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -176
+      ],
+      "id": "c45687e8-8c0f-4b70-8e7c-a965a03e5f23",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -352,
+        160
+      ],
+      "id": "2b2ba24d-952d-4e27-9fba-e2ff648b43ff",
+      "name": "Telegram Trigger",
+      "webhookId": "d768dff8-59e3-41d8-8813-83d84c06d0e1",
+      "credentials": {
+        "telegramApi": {
+          "id": "9gISyTx3WlldgqdE",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "2059539236",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        432
+      ],
+      "id": "165e2293-6513-4c57-bf74-5124c76dc5a2",
+      "name": "Send a text message2",
+      "webhookId": "a1f53508-df47-40cc-a966-c0fe27816a4c",
+      "credentials": {
+        "telegramApi": {
+          "id": "9gISyTx3WlldgqdE",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.choice }}",
+                    "rightValue": "havoc",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "41d877ab-8855-4880-8b8a-d85024ae17b6"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "havoc"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "aab055e8-5a76-40f5-9efb-77ca576d450d",
+                    "leftValue": "={{ $json.choice }}",
+                    "rightValue": "cobalt",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cobalt"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9dda3e40-4ed2-47fd-a902-690fcdaa98d4",
+                    "leftValue": "={{ $json.choice }}",
+                    "rightValue": "other",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        128
+      ],
+      "id": "62d39d15-9348-4001-b55b-eb26fe8b3541",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/IPC2s.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -176,
+        -176
+      ],
+      "id": "565349d0-12e8-4426-9ec9-63936beeb11d",
+      "name": "Feed + Cobalt Strike data",
+      "notesInFlow": false,
+      "executeOnce": false,
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "const esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\n\nconst raw = String($input.first().json.data || '');\nconst lines = raw.split('\\n').filter(l => l.trim() && !l.startsWith('#'));\n\nconst counts = { cobalt: 0, havoc: 0, other: 0 };\nconst otherFamilies = {};\n\nfor (const line of lines) {\n  const p = line.split(',');\n  const ip = (p[0] || '').trim();\n  const family = (p[1] || '').trim() || 'Unknown';\n  if (!/^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/.test(ip)) continue;\n\n  const f = family.toLowerCase();\n  if (f.includes('cobalt')) counts.cobalt++;\n  else if (f.includes('havoc')) counts.havoc++;\n  else {\n    counts.other++;\n    otherFamilies[family] = (otherFamilies[family] || 0) + 1;\n  }\n}\n\nconst top = Object.entries(otherFamilies)\n  .sort((a, b) => b[1] - a[1]).slice(0, 5)\n  .map(([k, v]) => `• ${esc(k)}: ${v}`).join('\\n');\n\nconst tarix = new Date().toISOString().split('T')[0];\nconst cem = counts.cobalt + counts.havoc + counts.other;\n\nlet text = `<b>C2 feed yükləndi — ${tarix}</b>\\n`;\ntext += `Cobalt Strike: <b>${counts.cobalt}</b>\\n`;\ntext += `Havoc: <i>ThreatFox-dan</i>\\n`;\ntext += `Digər: <b>${counts.other}</b>\\n`;\nif (top) text += `\\n<i>Digər ailələr:</i>\\n${top}\\n`;\ntext += `\\nHansını analiz edim?\\nDüymə bas, ya da yaz: <code>cobalt</code> / <code>havoc</code> / <code>hamısı</code>`;\n\nreturn [{ json: { text, counts } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        32,
+        -176
+      ],
+      "id": "0910d51d-b8bd-4bd6-aeaf-a116948b2b66",
+      "name": "Question "
+    },
+    {
+      "parameters": {
+        "chatId": "2059539236",
+        "text": "={{ $json.text }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "={{ 'cobalt (' + $json.counts.cobalt + ')' }}",
+                    "additionalFields": {
+                      "callback_data": "=\t{{ 'Cobalt (' + $json.counts.cobalt + ')' }}"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "={{ 'Havoc (' + $json.counts.havoc + ')' }}",
+                    "additionalFields": {
+                      "callback_data": "havoc"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "=Hamısı",
+                    "additionalFields": {
+                      "callback_data": "other"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        -176
+      ],
+      "id": "e78f0719-183b-4c0e-9bfa-d9d6333f2b48",
+      "name": "send to telegram ",
+      "webhookId": "a7e276e2-cc37-4b0f-8ba9-998a76d8ccde",
+      "credentials": {
+        "telegramApi": {
+          "id": "9gISyTx3WlldgqdE",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const u = $input.first().json;\nlet raw = '', chatId = null, callbackId = null, userId = null;\n\nif (u.callback_query) {\n  raw = u.callback_query.data || '';\n  chatId = u.callback_query.message.chat.id;\n  callbackId = u.callback_query.id;\n  userId = u.callback_query.from.id;\n} else if (u.message) {\n  raw = u.message.text || '';\n  chatId = u.message.chat.id;\n  userId = u.message.from.id;\n}\n\n// Yalnız sən istifadə edə biləsən\nconst ICAZE = [2059539236];\nif (!ICAZE.includes(Number(userId))) {\n  return [{ json: { choice: 'denied', chatId, callbackId } }];\n}\n\nconst s = raw.toLowerCase().trim().replace(/^\\//, '');\nlet choice = 'unknown';\nif (s.includes('cobalt') || s === 'cs' || s === '1') choice = 'cobalt';\nelse if (s.includes('havoc') || s === '2') choice = 'havoc';\nelse if (s.includes('ham') || s.includes('all') || s === '3') choice = 'all';\n\nreturn [{ json: { choice, chatId, callbackId, rawInput: raw } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        160
+      ],
+      "id": "c830540b-e97f-4686-9529-0c1404454fc2",
+      "name": "Choices"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://threatfox-api.abuse.ch/api/v1/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Auth-Key",
+              "value": "cd464774c2f74701b8b5281464c2157ea6dd35700296c11f"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"query\": \"malwareinfo\",\n  \"malware\": \"win.havoc\",\n  \"limit\": 100\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        64
+      ],
+      "id": "b08fed96-c8b9-4ce8-8544-86642a201d5c",
+      "name": "ThreatFox - Havoc"
+    },
+    {
+      "parameters": {
+        "jsCode": "const resp = $input.first().json;\n\nif (resp.query_status !== 'ok' || !Array.isArray(resp.data)) {\n  return [{ json: { ip: null, family: 'Havoc', error: resp.query_status } }];\n}\n\nconst out = [];\nconst seen = new Set();\n\nfor (const d of resp.data) {\n  let ip = d.ioc || '';\n  let port = null;\n\n  if (d.ioc_type === 'ip:port') {\n    const parts = ip.split(':');\n    ip = parts[0];\n    port = parts[1];\n  } else if (d.ioc_type !== 'ip') {\n    continue;   // domain/hash-ları at\n  }\n\n  if (!/^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/.test(ip)) continue;\n  if (seen.has(ip)) continue;\n  seen.add(ip);\n\n  out.push({ json: {\n    ip,\n    family: d.malware_printable || 'Havoc',\n    feedPort: port,\n    firstSeen: d.first_seen,\n    confidence: d.confidence_level,\n    choice: 'havoc',\n  }});\n}\n\nreturn out.slice(0, 25);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        64
+      ],
+      "id": "df54a3b1-5c3b-497b-b798-6a5b55df9313",
+      "name": "Havoc parse"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/drb-ra/C2IntelFeeds/master/feeds/IPC2s.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        368,
+        240
+      ],
+      "id": "ef86ea5d-7625-49b2-94e2-bf2837b322ab",
+      "name": "GitHub - CSV"
+    },
+    {
+      "parameters": {
+        "jsCode": "const choice = $('Choices').first().json.choice;\nconst raw = String($input.first().json.data || '');\nconst lines = raw.split('\\n').filter(l => l.trim() && !l.startsWith('#'));\n\nconst all = [];\nfor (const line of lines) {\n  const p = line.split(',');\n  const ip = (p[0] || '').trim();\n  const family = (p[1] || '').trim() || 'Unknown';\n  if (!/^\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}$/.test(ip)) continue;\n  all.push({ ip, family });\n}\n\nlet sel;\nif (choice === 'cobalt')     sel = all.filter(i => i.family.toLowerCase().includes('cobalt'));\nelse if (choice === 'havoc') sel = all.filter(i => i.family.toLowerCase().includes('havoc'));\nelse                         sel = all;\n\nif (choice === 'havoc' && sel.length === 0) {\n  sel = ['192.236.148.154','198.73.57.171','213.80.120.130','108.20.196.123',\n         '141.98.157.64','216.245.176.232','136.175.187.81','136.175.187.101',\n         '185.230.185.11'].map(ip => ({ ip, family: 'Havoc C2 (manual)' }));\n}\n\nconst LIMIT = 25;\nreturn sel.slice(0, LIMIT).map(r => ({\n  json: { ...r, choice, totalFound: sel.length }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        240
+      ],
+      "id": "87ed133c-6043-4fed-8c6d-161740fe0fe1",
+      "name": "Cobalt filtr"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst out = [];\n\nconst sleep = (ms) => new Promise(r => setTimeout(r, ms));\n\nfor (const item of items) {\n  const ip = item.json.ip;\n  const family = item.json.family || 'Unknown';\n\n  let ports = [], hostnames = [], vulns = [], cpes = [], tags = [];\n\n  // 1) Shodan InternetDB — açar tələb etmir, port/hostname/vuln verir\n  try {\n    const db = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `https://internetdb.shodan.io/${ip}`,\n      json: true,\n      timeout: 10000,\n    });\n    ports     = db.ports     || [];\n    hostnames = db.hostnames || [];\n    vulns     = db.vulns     || [];\n    cpes      = db.cpes      || [];\n    tags      = db.tags      || [];\n  } catch (e) {\n    // 404 = InternetDB-də qeyd yoxdur, normaldır\n  }\n\n  // 2) ip-api.com — PTR, ASN, ölkə, org\n  let ptr = 'N/A', country = 'N/A', city = 'N/A', org = 'N/A', asn = 'N/A';\n  try {\n    const geo = await this.helpers.httpRequest({\n      method: 'GET',\n      url: `http://ip-api.com/json/${ip}?fields=status,country,city,isp,org,as,reverse,query`,\n      json: true,\n      timeout: 10000,\n    });\n    if (geo.status === 'success') {\n      ptr     = geo.reverse || 'N/A';\n      country = geo.country || 'N/A';\n      city    = geo.city    || 'N/A';\n      org     = geo.org || geo.isp || 'N/A';\n      asn     = geo.as      || 'N/A';\n    }\n  } catch (e) {}\n\n  // 3) Nameserver-lər — hostname varsa, domenin NS qeydlərini çək\n  let domain = 'N/A', ns = 'N/A';\n  const source = hostnames.length ? hostnames[0] : (ptr !== 'N/A' ? ptr : null);\n  if (source) {\n    domain = source.split('.').slice(-2).join('.');\n    try {\n      const dns = await this.helpers.httpRequest({\n        method: 'GET',\n        url: `https://dns.google/resolve?name=${domain}&type=NS`,\n        json: true,\n        timeout: 10000,\n      });\n      if (dns.Answer && dns.Answer.length) {\n        ns = dns.Answer.map(a => a.data.replace(/\\.$/, '')).join(', ');\n      }\n    } catch (e) {}\n  }\n\n  out.push({\n    json: {\n      ip,\n      family,\n      ports:     ports.length     ? ports.join(', ')          : 'N/A',\n      hostnames: hostnames.length ? hostnames.join(', ')      : 'N/A',\n      domain,\n      ns,\n      ptr,\n      vulns:     vulns.length     ? vulns.slice(0, 8).join(', ') : 'N/A',\n      cpes:      cpes.length      ? cpes.slice(0, 5).join(', ')  : 'N/A',\n      tags:      tags.length      ? tags.join(', ')           : 'N/A',\n      country, city, org, asn,\n      active: ports.length > 0,\n    }\n  });\n\n  await sleep(1500); // ip-api limiti: 45 sorğu/dəqiqə\n}\n\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        240
+      ],
+      "id": "df8e8fde-cd74-49f3-a070-ec74123dd351",
+      "name": "Enrich"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst tarix = new Date().toISOString().split('T')[0];\n\nconst esc = (s) => String(s == null ? 'N/A' : s)\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst results = items.filter(i => i.json.active === true);\n\nif (results.length === 0) {\n  return [{ json: { text: `🔍 <b>C2 Scan — ${tarix}</b>\\nAktiv server tapılmadı.` } }];\n}\n\nlet mesaj = `🚨 <b>Havoc C2 Threat Intel — ${tarix}</b>\\n`;\nmesaj += `📊 Yoxlanıldı: <b>${items.length}</b> | Aktiv: <b>${results.length}</b>\\n\\n`;\n\nfor (let i = 0; i < Math.min(results.length, 10); i++) {\n  const d = results[i].json;\n  mesaj += `<b>#${i + 1}</b> — ${esc(d.family)}\\n`;\n  mesaj += `🌐 IP: <code>${esc(d.ip)}</code>\\n`;\n  mesaj += `🔌 Portlar: <code>${esc(d.ports)}</code>\\n`;\n  mesaj += `🔗 Hostname: ${esc(d.hostnames)}\\n`;\n  mesaj += `🏷 Domen: ${esc(d.domain)}\\n`;\n  mesaj += `📡 NS: ${esc(d.ns)}\\n`;\n  mesaj += `🔤 PTR: ${esc(d.ptr)}\\n`;\n  mesaj += `🏢 ASN/Org: ${esc(d.asn)} — ${esc(d.org)}\\n`;\n  mesaj += `📍 Yer: ${esc(d.city)}, ${esc(d.country)}\\n`;\n  mesaj += `⚠️ Vulns: ${esc(d.vulns)}\\n`;\n  mesaj += `🧩 Tags: ${esc(d.tags)}\\n`;\n  mesaj += `───────────────\\n\\n`;\n}\n\nif (mesaj.length > 4000) {\n  mesaj = mesaj.substring(0, 3900) + '\\n\\n... <i>davam edir</i>';\n}\n\nreturn [{ json: { text: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        240
+      ],
+      "id": "dd97bef3-9d01-4167-8832-1830b16776ca",
+      "name": "Format"
+    },
+    {
+      "parameters": {
+        "chatId": "2059539236",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        240
+      ],
+      "id": "298319ea-dcee-474b-9807-ee75e9109f0d",
+      "name": "Result",
+      "webhookId": "a1f53508-df47-40cc-a966-c0fe27816a4c",
+      "credentials": {
+        "telegramApi": {
+          "id": "9gISyTx3WlldgqdE",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Feed + Cobalt Strike data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Choices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "ThreatFox - Havoc",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GitHub - CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GitHub - CSV",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feed + Cobalt Strike data": {
+      "main": [
+        [
+          {
+            "node": "Question ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Question ": {
+      "main": [
+        [
+          {
+            "node": "send to telegram ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send to telegram ": {
+      "main": [
+        []
+      ]
+    },
+    "Choices": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ThreatFox - Havoc": {
+      "main": [
+        [
+          {
+            "node": "Havoc parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Havoc parse": {
+      "main": [
+        [
+          {
+            "node": "Enrich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub - CSV": {
+      "main": [
+        [
+          {
+            "node": "Cobalt filtr",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cobalt filtr": {
+      "main": [
+        [
+          {
+            "node": "Enrich",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich": {
+      "main": [
+        [
+          {
+            "node": "Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format": {
+      "main": [
+        [
+          {
+            "node": "Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 1,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
