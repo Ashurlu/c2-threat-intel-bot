@@ -12,6 +12,7 @@ This repo contains the exported n8n workflow (`workflow.json`) plus each
 for easier reading, diffing, and reuse outside of n8n.
 
 ---
+<img width="1348" height="447" alt="Screenshot 2026-09-02 002352" src="https://github.com/user-attachments/assets/f02b22fd-5fea-46e5-892e-e031000314a0" />
 
 ## How it works, node by node
 
