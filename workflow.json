@@ -38,7 +38,7 @@
     },
     {
       "parameters": {
-        "chatId": "2059539236",
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "={{ $json.text }}",
         "additionalFields": {
           "parse_mode": "HTML"
@@ -181,7 +181,7 @@
     },
     {
       "parameters": {
-        "chatId": "2059539236",
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "={{ $json.text }}",
         "replyMarkup": "inlineKeyboard",
         "inlineKeyboard": {
@@ -246,7 +246,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const u = $input.first().json;\nlet raw = '', chatId = null, callbackId = null, userId = null;\n\nif (u.callback_query) {\n  raw = u.callback_query.data || '';\n  chatId = u.callback_query.message.chat.id;\n  callbackId = u.callback_query.id;\n  userId = u.callback_query.from.id;\n} else if (u.message) {\n  raw = u.message.text || '';\n  chatId = u.message.chat.id;\n  userId = u.message.from.id;\n}\n\n// Yalnız sən istifadə edə biləsən\nconst ICAZE = [2059539236];\nif (!ICAZE.includes(Number(userId))) {\n  return [{ json: { choice: 'denied', chatId, callbackId } }];\n}\n\nconst s = raw.toLowerCase().trim().replace(/^\\//, '');\nlet choice = 'unknown';\nif (s.includes('cobalt') || s === 'cs' || s === '1') choice = 'cobalt';\nelse if (s.includes('havoc') || s === '2') choice = 'havoc';\nelse if (s.includes('ham') || s.includes('all') || s === '3') choice = 'all';\n\nreturn [{ json: { choice, chatId, callbackId, rawInput: raw } }];"
+        "jsCode": "const u = $input.first().json;\nlet raw = '', chatId = null, callbackId = null, userId = null;\n\nif (u.callback_query) {\n  raw = u.callback_query.data || '';\n  chatId = u.callback_query.message.chat.id;\n  callbackId = u.callback_query.id;\n  userId = u.callback_query.from.id;\n} else if (u.message) {\n  raw = u.message.text || '';\n  chatId = u.message.chat.id;\n  userId = u.message.from.id;\n}\n\n// Yalnız sən istifadə edə biləsən\nconst ICAZE = [123456789]; // <-- replace 123456789 with your own numeric Telegram user ID\nif (!ICAZE.includes(Number(userId))) {\n  return [{ json: { choice: 'denied', chatId, callbackId } }];\n}\n\nconst s = raw.toLowerCase().trim().replace(/^\\//, '');\nlet choice = 'unknown';\nif (s.includes('cobalt') || s === 'cs' || s === '1') choice = 'cobalt';\nelse if (s.includes('havoc') || s === '2') choice = 'havoc';\nelse if (s.includes('ham') || s.includes('all') || s === '3') choice = 'all';\n\nreturn [{ json: { choice, chatId, callbackId, rawInput: raw } }];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -266,7 +266,7 @@
           "parameters": [
             {
               "name": "Auth-Key",
-              "value": "cd464774c2f74701b8b5281464c2157ea6dd35700296c11f"
+              "value": "YOUR_THREATFOX_API_KEY"
             }
           ]
         },
@@ -352,7 +352,7 @@
     },
     {
       "parameters": {
-        "chatId": "2059539236",
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
         "text": "={{ $json.text }}",
         "additionalFields": {
           "parse_mode": "HTML"

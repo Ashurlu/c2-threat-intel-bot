@@ -16,7 +16,7 @@ if (u.callback_query) {
 }
 
 // Yalnız sən istifadə edə biləsən
-const ICAZE = [2059539236];
+const ICAZE = [123456789]; // <-- replace 123456789 with your own numeric Telegram user ID
 if (!ICAZE.includes(Number(userId))) {
   return [{ json: { choice: 'denied', chatId, callbackId } }];
 }
